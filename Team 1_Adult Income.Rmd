@@ -1,0 +1,93 @@
+---
+title: "ISOM5610 Project_Team 1"
+author: "Team 1"
+date: "14 December 2018"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+```
+
+# Reading and Cleaning Data
+
+```{r}
+setwd("~/MSBA/ISOM5610/final")
+income_raw <- read.table("adult_income.csv", sep = ",", header = TRUE)
+income_raw <- income_raw[-1]
+summary(income_raw)
+str(income_raw) ## we notice "?" needs to be replaced by NA
+income_raw[income_raw == "?"] <- NA
+
+library(naniar)
+vis_miss(income_raw)
+income <- income_raw[complete.cases(income_raw),]
+sum(is.na(income)) ## all NAs removed
+nrow(income)/nrow(income_raw) ## 92.6% of the orginal data are complete and will be used
+rm(income_raw)
+```
+
+# Descriptive Analysis
+
+```{r}
+
+```
+
+##############################
+Recat here
+##############################
+
+# Data Partition
+
+```{r}
+## there are 30,162 observatoins. Ramdomly partition ~80% and ~20% of the data into training and testing set
+library(caTools)
+set.seed(1111)
+spl <- sample.split(income$income, SplitRatio= 0.8)
+training_set <- subset(income, spl==TRUE)
+testing_set <- subset(income, spl==FALSE)
+```
+
+# Fit the Model
+
+## The Full Model
+
+```{r}
+fit.full <- glm(income~., family=binomial, data=training_set)  ## notice there is perfect separation
+summary(fit.full)
+```
+
+## Stepwise Selection
+
+```{r}
+fit.step <- step(fit.full)
+summary(fit.step)
+# the stepwise result suggests all 8 predictors are useful. We use fit.full as the base model going forward.
+fit <- fit.step
+```
+
+# Deviance Goodness of Fit Test
+
+```{r}
+1-pchisq(fit$deviance, fit$df.residual)
+# p-value~1, i.e. it is a good fit model 
+```
+
+# Esimtated Probabilities 
+
+```{r}
+prob <- predict(fit, newdata=testing_set, type = 'response')
+table(testing_set$income, prob > 0.5)
+
+library(InformationValue)
+plotROC((testing_set$income==">50K"), prob)
+
+#Double density plot
+p <- predict(fit, type='response')
+temp_train <- cbind(training_set, p)
+p <- prob
+temp_test <- cbind(testing_set, p)
+ggplot(temp_train, aes(p, color = as.factor(income))) + 
+  geom_density(size = 1) +
+  ggtitle("Training Set's estimated probabilities") 
+```
