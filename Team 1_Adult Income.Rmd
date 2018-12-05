@@ -21,9 +21,9 @@ income <- income_raw[complete.cases(income_raw),]
 sum(is.na(income)) ## all NAs removed
 nrow(income)/nrow(income_raw) ## 92.6% of the orginal data are complete and will be used
 rm(income_raw)
-
+income[,c(1,4,9,10,11)] <-  lapply(income[,c(1,4,9,10,11)] , as.numeric)
 summary(income)
-
+str(income)
 ```
 
 # Descriptive Analysis
@@ -162,18 +162,19 @@ income_rec$education<-as.character(income_rec$education)
 income_rec$education[income_rec$education=="Preschool"] <- "Preschool-4th"
 income_rec$education[income_rec$education=="1st-4th"] <- "Preschool-4th"
 income_rec$education<-as.factor(income_rec$education)
-## Age !!
-table(income_rec$age,income_rec$income)
-wms <- weighted.mean(c(17,18,19,20,21),c(328,447,594,629,621))
-wml <- weighted.mean(c(81,82,83,84,85,86,88,90),c(13,7,5,8,3,1,3,35))
-income_rec$age[income_rec$age < 22] <-wms
-income_rec$age[income_rec$age > 80] <-wml
-## education_num !!
-table(income_rec$education_num,income_rec$income)
-wms <- weighted.mean(c(1,2),c(45,151))
-income_rec$education_num[income_rec$education_num<3]<-wms
-## hr_per_week !!
-table(income_rec$hr_per_week,income_rec$income)
+# ## Age !!
+# table(income_rec$age,income_rec$income)
+# wms <- weighted.mean(c(17,18,19,20,21),c(328,447,594,629,621))
+# wml <- weighted.mean(c(81,82,83,84,85,86,88,90),c(13,7,5,8,3,1,3,35))
+# income_rec$age[income_rec$age < 22] <-wms
+# income_rec$age[income_rec$age > 80] <-wml
+# ## education_num !!
+# table(income_rec$education_num,income_rec$income)
+# wms <- weighted.mean(c(1,2),c(45,151))
+# income_rec$education_num[income_rec$education_num<3]<-wms
+# ## hr_per_week !!
+# 
+# table(income_rec$hr_per_week,income_rec$income)
 
 ```
 
@@ -197,7 +198,7 @@ testing_set <- subset(income_rec, spl==FALSE)
 ## The Full Model
 
 ```{r}
-fit.full <- glm(income~.-capital_gain-capital_loss-hr_per_week, family=binomial, data=training_set)  ## notice there is perfect separation
+fit.full <- glm(income~.-capital_gain-capital_loss, family=binomial, data=training_set)  ## notice there is perfect separation
 summary(fit.full)
 ```
 
