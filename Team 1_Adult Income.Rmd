@@ -5,15 +5,11 @@ date: "14 December 2018"
 output: html_document
 ---
 
-```{r}
-library(ggplot2)
-```
-
 # Reading and Cleaning Data
 
 ```{r}
 setwd("~/MSBA/ISOM5610/final")
-income_raw <- read.table("adult_income.csv", sep = ",", header = TRUE)
+income_raw <- read.csv("adult_income.csv", sep = ",", header = TRUE)
 income_raw <- income_raw[-1]
 summary(income_raw)
 str(income_raw) ## we notice "?" needs to be replaced by NA
@@ -25,11 +21,159 @@ income <- income_raw[complete.cases(income_raw),]
 sum(is.na(income)) ## all NAs removed
 nrow(income)/nrow(income_raw) ## 92.6% of the orginal data are complete and will be used
 rm(income_raw)
+
+summary(income)
+
 ```
 
 # Descriptive Analysis
 
 ```{r}
+library(ggplot2)
+library(RColorBrewer)
+
+ds1 <- ggplot(income, aes(x=age)) + 
+    geom_density(aes(fill=factor(income)),alpha=0.5) +
+    labs(title="Density of Income by Age", 
+       y="Density of Income", 
+       x="Age (Years)") + 
+    scale_fill_manual(name = "income",
+                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+                      labels = c("Income <= 50K", "Income > 50K"))
+plot(ds1)
+
+ds2 <- ggplot(income, aes(x=education_num)) + 
+    geom_density(aes(fill=factor(income)),alpha=0.5) +
+    labs(title="Density of Income by Edu_num", 
+       y="Density of Income", 
+       x="Education (Years)") + 
+    scale_fill_manual(name = "income",
+                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+                      labels = c("Income <= 50K", "Income > 50K"))
+plot(ds2)
+
+ds3 <- ggplot(income, aes(x=capital_gain)) + 
+  geom_density(aes(fill=factor(income)),alpha=0.5) + 
+  labs(title="Density of Income by Capital Gain", 
+       y="Density of Income", x="Capital Gain") + 
+  scale_fill_manual(name = "income", values = c(brewer.pal(7, "Reds")[5], 
+                                                brewer.pal(7, "Blues")[5]), 
+                    labels = c("Income <= 50K", "Income > 50K"))
+plot(ds3)
+
+ds4 <- ggplot(income, aes(x=capital_loss)) + 
+    geom_density(aes(fill=factor(income)),alpha=0.5) +
+    labs(title="Density of Income by Capital Loss", 
+       y="Density of Income", 
+       x="Capital Loss") + 
+    scale_fill_manual(name = "income",
+                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+                      labels = c("Income <= 50K", "Income > 50K"))
+plot(ds4)
+
+ds5 <- ggplot(income, aes(x=hr_per_week)) + 
+    geom_density(aes(fill=factor(income)),alpha=0.5) +
+    labs(title="Density of Income by Working Hours", 
+       y="Density of Income", 
+       x="Working Hours") + 
+    scale_fill_manual(name = "income",
+                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+                      labels = c("Income <= 50K", "Income > 50K"))
+plot(ds5)
+
+
+bar1 <- ggplot() + geom_bar(data=income, aes(x=type_employer,fill=factor(income)))+
+   labs(title="Distribution of Income among Different Types of Employers", 
+        y="Count by Different Income", x="Types of Employers")+
+scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
+brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+
+
+plot(bar1)
+
+bar2 <- ggplot() + geom_bar(data=income, aes(x=education,fill=factor(income)))+
+   labs(title="Distribution of Income among Different Education Levels", 
+        y="Count by Different Income", x="Education Levels")+
+scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
+      brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+
+
+
+plot(bar2)
+
+bar3 <- ggplot() + geom_bar(data=income, aes(x=marital,fill=factor(income)))+
+   labs(title="Distribution of Income among Different Marital Statuses", 
+        y="Count by Different Income", x="Marital Statuses")+
+scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
+     brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+
+
+plot(bar3)
+
+bar4 <- ggplot() + geom_bar(data=income, aes(x=occupation,fill=factor(income)))+
+   labs(title="Distribution of Income among Different Types of Occupations",
+        y="Count by Different Income", x="Types of Occupations")+
+scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
+      brewer.pal(7, "Blues")[5]), labels = c("Income <= 50K", "Income > 50K"))+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+
+
+
+plot(bar4)
+
+bar5 <- ggplot() + geom_bar(data=income, aes(x=race,fill=factor(income)))+
+   labs(title="Distribution of Income among Different Races", 
+        y="Count by Different Income", x="Races")+
+scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
+      brewer.pal(7, "Blues")[5]), labels = c("Income <= 50K", "Income > 50K"))+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+
+
+
+plot(bar5)
+
+bar6 <- ggplot() + geom_bar(data=income, aes(x=sex,fill=factor(income)))+
+   labs(title="Distribution of Income among Genders", 
+        y="Count by Different Income", x="Gender")+
+scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
+       brewer.pal(7, "Blues")[5]), labels = c("Income <= 50K", "Income > 50K"))
+
+
+
+plot(bar6)
+```
+
+
+```{r}
+income_rec <- income
+
+## without pay in type_employer !!
+table(income$type_employer,income$income)
+summary(income$type_employer)
+income_rec$type_employer[income_rec$type_employer=="Without-pay"] <- "Self-emp-not-inc"
+## Preschool in education !!
+table(income$education,income$income)
+summary(income_rec$education)
+table(income$education,income$education_num)
+income_rec$education<-as.character(income_rec$education)
+income_rec$education[income_rec$education=="Preschool"] <- "Preschool-4th"
+income_rec$education[income_rec$education=="1st-4th"] <- "Preschool-4th"
+income_rec$education<-as.factor(income_rec$education)
+## Age !!
+table(income_rec$age,income_rec$income)
+wms <- weighted.mean(c(17,18,19,20,21),c(328,447,594,629,621))
+wml <- weighted.mean(c(81,82,83,84,85,86,88,90),c(13,7,5,8,3,1,3,35))
+income_rec$age[income_rec$age < 22] <-wms
+income_rec$age[income_rec$age > 80] <-wml
+## education_num !!
+table(income_rec$education_num,income_rec$income)
+wms <- weighted.mean(c(1,2),c(45,151))
+income_rec$education_num[income_rec$education_num<3]<-wms
+## hr_per_week !!
+table(income_rec$hr_per_week,income_rec$income)
 
 ```
 
@@ -43,9 +187,9 @@ Recat here
 ## there are 30,162 observatoins. Ramdomly partition ~80% and ~20% of the data into training and testing set
 library(caTools)
 set.seed(1111)
-spl <- sample.split(income$income, SplitRatio= 0.8)
-training_set <- subset(income, spl==TRUE)
-testing_set <- subset(income, spl==FALSE)
+spl <- sample.split(income_rec$income, SplitRatio= 0.8)
+training_set <- subset(income_rec, spl==TRUE)
+testing_set <- subset(income_rec, spl==FALSE)
 ```
 
 # Fit the Model
@@ -53,7 +197,7 @@ testing_set <- subset(income, spl==FALSE)
 ## The Full Model
 
 ```{r}
-fit.full <- glm(income~., family=binomial, data=training_set)  ## notice there is perfect separation
+fit.full <- glm(income~.-capital_gain-capital_loss-hr_per_week, family=binomial, data=training_set)  ## notice there is perfect separation
 summary(fit.full)
 ```
 
