@@ -5,7 +5,7 @@ date: "14 December 2018"
 output: html_document
 ---
 
-# Reading and Cleaning Data
+# Step0: Reading and Cleaning Data
 
 ```{r}
 setwd("~/MSBA/ISOM5610/final")
@@ -26,7 +26,7 @@ rm(income_raw)
 saveRDS(income, "income0.rds") # backup
 ```
 
-# Descriptive Analysis
+# Step 1: Explore Data
 
 ```{r}
 income0 <- income # create a duplication for data exploration
@@ -36,7 +36,7 @@ str(income)
 library(ggplot2)
 library(RColorBrewer)
 
-ds1 <- ggplot(income2, aes(x=age)) + 
+ds1 <- ggplot(income, aes(x=age)) + 
     geom_density(aes(fill=factor(income)),alpha=0.5) +
     labs(title="Density of Income by Age", 
        y="Density of Income", 
@@ -209,26 +209,67 @@ ggplot(income_map, aes(x = long, y = lat, group = group, fill = countryIncomePct
   theme_void()
 ```
 
-```{r}
-income_rec <- income0
+# Step 2: First Recategorization based on data exploration
 
-## replace capital_gain and capital_loss with log absolute capital gain (loss) effect
-income_rec$capital_logabseff <- income$capital_logabseff
-income_rec$capital_gain <- NULL
-income_rec$capital_loss <- NULL
+
+```{r}
+income_rec <- subset(income0,select=-education_num)
+
+## Recategorize the country:
+region_table <- data.frame(country=c("Cambodia","Canada","China","Columbia","Cuba",
+                  "Dominican-Republic","Ecuador","El-Salvador","England","France","Germany",
+                  "Greece","Guatemala","Haiti","Holand-Netherlands","Honduras","Hong","Hungary",
+                  "India","Iran","Ireland","Italy","Jamaica","Japan","Laos","Mexico",
+                  "Nicaragua","Outlying-US(Guam-USVI-etc)","Peru","Philippines","Poland",
+                  "Portugal","Puerto-Rico","Scotland","South","Taiwan","Thailand",
+                  "Trinadad&Tobago","United-States","Vietnam","Yugoslavia"),
+                  region=c("Asia","NorthAmericas","Asia","Latin America","Latin America",
+                    "Latin America","Latin America","Latin America","Europe","Europe","Europe",
+                    "Europe","Latin America","Latin America","Europe","Latin America","Asia",
+                    "Europe","Asia","Asia","Europe","Europe","Latin America","Asia","Asia",
+                    "Latin America","Latin America","NorthAmericas","Latin America","Asia",
+                    "Europe","Europe","Latin America","Europe","Asia","Asia","Asia",
+                    "Latin America","NorthAmericas","Asia","Europe"))
+income_rec <- merge(income_rec, region_table, by.x="country", by.y="country", all.x=TRUE)
+income_rec <- subset(income_rec,select=-country)
+# summary(income_rec$region)
+# 
+# table(income_rec$region,income_rec$income)
+
+
+
+```
+## Data Partition
+
+# Step 3: Fit the Full Model
+
+
+```{r}
+## there are 30,162 observatoins. Ramdomly partition ~80% and ~20% of the data into training and testing set
+library(caTools)
+set.seed(1111)
+spl <- sample.split(income_rec$income, SplitRatio= 0.8)
+training_set <- subset(income_rec, spl==TRUE)
+testing_set <- subset(income_rec, spl==FALSE)
+fit.full <- glm(income~., family=binomial, data=training_set)  ## notice there is perfect separation
+summary(fit.full)
+```
+
+
+# Step 4&5 : Detect Perfect Separation and Recategorize again
+
+```{r}
 
 ## without pay in type_employer !!
 table(income$type_employer,income$income)
-summary(income$type_employer)
 income_rec$type_employer[income_rec$type_employer=="Without-pay"] <- "Self-emp-not-inc"
 ## Preschool in education !!
 table(income$education,income$income)
-summary(income_rec$education)
-table(income$education,income$education_num)
 income_rec$education<-as.character(income_rec$education)
 income_rec$education[income_rec$education=="Preschool"] <- "Preschool-4th"
 income_rec$education[income_rec$education=="1st-4th"] <- "Preschool-4th"
 income_rec$education<-as.factor(income_rec$education)
+
 # ## Age !!
 # table(income_rec$age,income_rec$income)
 # wms <- weighted.mean(c(17,18,19,20,21),c(328,447,594,629,621))
@@ -245,28 +286,36 @@ income_rec$education<-as.factor(income_rec$education)
 
 ```
 
-
-# Data Partition
+# Step 6: Fit full model again
 
 ```{r}
-## there are 30,162 observatoins. Ramdomly partition ~80% and ~20% of the data into training and testing set
-library(caTools)
 set.seed(1111)
 spl <- sample.split(income_rec$income, SplitRatio= 0.8)
 training_set <- subset(income_rec, spl==TRUE)
 testing_set <- subset(income_rec, spl==FALSE)
-```
-
-# Fit the Model
-
-## The Full Model
-
-```{r}
-fit.full <- glm(income~., family=binomial, data=training_set)  ## notice there is perfect separation
+fit.full <- glm(income~., family=binomial, data=training_set) 
 summary(fit.full)
 ```
 
-## Stepwise Selection
+Capital_gain still cause convergence problem
+
+```{r}
+## replace capital_gain and capital_loss with log absolute capital gain (loss) effect
+ income_rec$capital_net <- income$capital_net
+ income_rec$capital_gain <- NULL
+ income_rec$capital_loss <- NULL
+```
+
+```{r}
+set.seed(111)
+spl <- sample.split(income_rec$income, SplitRatio= 0.8)
+training_set <- subset(income_rec, spl==TRUE)
+testing_set <- subset(income_rec, spl==FALSE)
+fit.full <- glm(income~., family=binomial, data=training_set) 
+summary(fit.full)
+```
+
+Step7: Stepwise Selection
 
 ```{r}
 fit.step <- step(fit.full)
@@ -274,6 +323,229 @@ summary(fit.step)
 # the stepwise result suggests all 8 predictors are useful. We use fit.full as the base model going forward.
 fit <- fit.step
 ```
+
+## capital is useless now!!
+
+Step7.5 : Further Improvement & Interaction
+
+
+```{r}
+## Recategorize the country:
+marry_table <- data.frame(marital=c("Divorced","Married-AF-spouse","Married-civ-spouse",
+                                    "Married-spouse-absent","Never-married","Separated",
+                                    "Widowed"),marital_new=c("Alone","Married",
+                                     "Married","Alone","Alone","Alone","Alone"))
+income_rec <- merge(income_rec, marry_table, by.x="marital", by.y="marital", all.x=TRUE)
+income_rec <- subset(income_rec,select=-marital)
+```
+
+
+```{r}
+set.seed(111)
+spl <- sample.split(income_rec$income, SplitRatio= 0.8)
+training_set <- subset(income_rec, spl==TRUE)
+testing_set <- subset(income_rec, spl==FALSE)
+fit.full <- glm(income~.-capital_net, family=binomial, data=training_set) 
+summary(fit.full)
+```
+Now all predictors are significant. AUC 87.75%. Check the interaction.
+
+
+```{r}
+attach(income_rec)
+r1 <- ggplot() +
+  aes(x = type_employer, color = race, group = race, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('type_employer:race')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r1)
+
+r2 <- ggplot() +
+  aes(x = type_employer, color = sex, group = sex, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('type_employer:sex')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r2)
+
+
+r3 <- ggplot() +
+  aes(x = type_employer, color = region, group = region, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('type_employer:region')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r3)
+
+r4 <- ggplot() +
+  aes(x = type_employer, color = marital_new, group =  marital_new, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('type_employer:marital')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r4)
+
+r5 <- ggplot() +
+  aes(x = education, color = race, group = race, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('education:race')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r5)
+
+r6 <- ggplot() +
+  aes(x = education, color = sex, group = sex, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('education:sex')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r6)
+
+
+r7 <- ggplot() +
+  aes(x = education, color = region, group = region, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('education:region')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r7)
+
+r8 <- ggplot() +
+  aes(x = education, color = marital_new, group =  marital_new, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('education:marital')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r8)
+
+r9 <- ggplot() +
+  aes(x = occupation, color = race, group = race, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('occupation:race')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r9)
+
+r10 <- ggplot() +
+  aes(x = occupation, color = sex, group = sex, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('occupation:sex')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r10)
+
+
+r11 <- ggplot() +
+  aes(x = occupation, color = region, group = region, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('occupation:region')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r11)
+
+r12 <- ggplot() +
+  aes(x = occupation, color = marital_new, group =  marital_new, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('occupation:marital')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r12)
+
+r13 <- ggplot() +
+  aes(x = race, color = marital_new, group =  marital_new, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('race:marital')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r13)
+
+r14 <- ggplot() +
+  aes(x = sex, color = marital_new, group =  marital_new, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('sex:marital')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r14)
+
+r15 <- ggplot() +
+  aes(x = region, color = marital_new, group =  marital_new, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('region:marital')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r15)
+
+r16 <- ggplot() +
+  aes(x = region, color = sex, group =  sex, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('region:sex')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r16)
+
+r17 <- ggplot() +
+  aes(x = region, color = race, group =  race, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('region:race')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r17)
+
+r18 <- ggplot() +
+  aes(x = sex, color = race, group =  race, y = income_rec$income) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.y = mean, geom = "line") + ggtitle('sex:race')+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(r18)
+```
+
+```{r}
+library(lmtest)
+fit.int1 <- update(fit.full,.~.+type_employer:race)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## significant but not very good
+
+fit.int1 <- update(fit.full,.~.+type_employer:sex)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## significant but not very good
+
+fit.int1 <- update(fit.full,.~.+type_employer:marital_new)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## significant, auc increase to 87.8% !!!!!!!
+
+fit.int1 <- update(fit.full,.~.+education:sex)
+lrtest(fit.int1,fit.full)  ## not significant
+
+fit.int1 <- update(fit.full,.~.+education:marital_new)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## significant but not very good
+
+fit.int1 <- update(fit.full,.~.+occupation:sex)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## not significant 
+
+fit.int1 <- update(fit.full,.~.+occupation:marital_new)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## significant, auc increase to 87.9% !!!!!!!
+
+fit.int1 <- update(fit.full,.~.+race:marital_new)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## significant, not so good
+
+fit.int1 <- update(fit.full,.~.+region:marital_new)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## significant, auc increase to 87.7% !!!!!!!
+
+fit.int1 <- update(fit.full,.~.+region:sex)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## not significant
+
+
+fit.int1 <- update(fit.full,.~.+region:race)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  ## not significant
+```
+add two interaction:
+
+```{r}
+fit.int1 <- update(fit.full,.~.+occupation:marital_new)
+lrtest(fit.int1,fit.full)
+fit.int2 <- update(fit.full,.~.+occupation:marital_new+type_employer:marital_new)
+lrtest(fit.int2,fit.int1)
+## this one best, auc 87.91%
+
+
+
+fit.int3 <- update(fit.full,.~.+occupation:marital_new+type_employer:marital_new+region:marital_new)
+lrtest(fit.int3,fit.int2)
+
+
+```
+
 
 # Deviance Goodness of Fit Test
 
@@ -285,7 +557,7 @@ fit <- fit.step
 # Esimtated Probabilities 
 
 ```{r}
-prob <- predict(fit, newdata=testing_set, type = 'response')
+prob <- predict(fit.int2, newdata=testing_set, type = 'response')
 table(testing_set$income, prob > 0.5)
 
 library(InformationValue)
