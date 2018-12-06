@@ -18,21 +18,25 @@ income_raw[income_raw == "?"] <- NA
 library(naniar)
 vis_miss(income_raw)
 income <- income_raw[complete.cases(income_raw),]
+income[,c(2,3,5:8,12,13)] <-  lapply(income[,c(2,3,5:8,12,13)], factor) # drop empty factor levels
 sum(is.na(income)) ## all NAs removed
 nrow(income)/nrow(income_raw) ## 92.6% of the orginal data are complete and will be used
 rm(income_raw)
-income[,c(1,4,9,10,11)] <-  lapply(income[,c(1,4,9,10,11)] , as.numeric)
-summary(income)
-str(income)
+# income[,c(1,4,9,10,11)] <-  lapply(income[,c(1,4,9,10,11)], as.numeric)
+saveRDS(income, "income0.rds") # backup
 ```
 
 # Descriptive Analysis
 
 ```{r}
+income0 <- income # create a duplication for data exploration
+summary(income)
+str(income)
+
 library(ggplot2)
 library(RColorBrewer)
 
-ds1 <- ggplot(income, aes(x=age)) + 
+ds1 <- ggplot(income2, aes(x=age)) + 
     geom_density(aes(fill=factor(income)),alpha=0.5) +
     labs(title="Density of Income by Age", 
        y="Density of Income", 
@@ -42,6 +46,8 @@ ds1 <- ggplot(income, aes(x=age)) +
                       labels = c("Income <= 50K", "Income > 50K"))
 plot(ds1)
 
+
+unique(income[,c(3,4)]) # check relationship between 'education' and 'education_num'
 ds2 <- ggplot(income, aes(x=education_num)) + 
     geom_density(aes(fill=factor(income)),alpha=0.5) +
     labs(title="Density of Income by Edu_num", 
@@ -51,6 +57,15 @@ ds2 <- ggplot(income, aes(x=education_num)) +
                       values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
                       labels = c("Income <= 50K", "Income > 50K"))
 plot(ds2)
+
+bar2 <- ggplot() + geom_bar(data=income, aes(x=education,fill=factor(income)))+
+   labs(title="Distribution of Income among Different Education Levels", 
+        y="Count by Different Income", x="Education Levels")+
+scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
+      brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+
+plot(bar2)
 
 ds3 <- ggplot(income, aes(x=capital_gain)) + 
   geom_density(aes(fill=factor(income)),alpha=0.5) + 
@@ -70,6 +85,31 @@ ds4 <- ggplot(income, aes(x=capital_loss)) +
                       values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
                       labels = c("Income <= 50K", "Income > 50K"))
 plot(ds4)
+
+# try net capital gain (loss)
+income$capital_net <- income$capital_gain - income$capital_loss
+ds4.1 <- ggplot(income, aes(x=capital_net)) + 
+    geom_density(aes(fill=factor(income)),alpha=0.5) +
+    labs(title="Density of Income by Net Capital Gain (Loss)", 
+       y="Density of Income", 
+       x="Net Capital Gain (Loss)") + 
+    scale_fill_manual(name = "income",
+                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+                      labels = c("Income <= 50K", "Income > 50K"))
+plot(ds4.1)
+
+# try absolute capital gain (loss) effect
+income$capital_abseff <- income$capital_gain + income$capital_loss
+ds4.2 <- ggplot(income, aes(x=capital_abseff)) + 
+    geom_density(aes(fill=factor(income)),alpha=0.5) +
+    labs(title="Density of Income by Absolute Capital Gain (Loss) Effect", 
+       y="Density of Income", 
+       x="Absolute Capital Gain (Loss) Effect") + 
+    scale_fill_manual(name = "income",
+                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+                      labels = c("Income <= 50K", "Income > 50K"))
+plot(ds4.2)
+
 
 ds5 <- ggplot(income, aes(x=hr_per_week)) + 
     geom_density(aes(fill=factor(income)),alpha=0.5) +
@@ -92,16 +132,7 @@ brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
 
 plot(bar1)
 
-bar2 <- ggplot() + geom_bar(data=income, aes(x=education,fill=factor(income)))+
-   labs(title="Distribution of Income among Different Education Levels", 
-        y="Count by Different Income", x="Education Levels")+
-scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
-      brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
-  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
 
-
-
-plot(bar2)
 
 bar3 <- ggplot() + geom_bar(data=income, aes(x=marital,fill=factor(income)))+
    labs(title="Distribution of Income among Different Marital Statuses", 
@@ -148,7 +179,7 @@ plot(bar6)
 
 
 ```{r}
-income_rec <- income
+income_rec <- income0
 
 ## without pay in type_employer !!
 table(income$type_employer,income$income)
