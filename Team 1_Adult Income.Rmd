@@ -18,11 +18,19 @@ income_raw[income_raw == "?"] <- NA
 library(naniar)
 vis_miss(income_raw)
 income <- income_raw[complete.cases(income_raw),]
-income[,c(2,3,5:8,12,13)] <-  lapply(income[,c(2,3,5:8,12,13)], factor) # drop empty factor levels
 sum(is.na(income)) ## all NAs removed
 nrow(income)/nrow(income_raw) ## 92.6% of the orginal data are complete and will be used
 rm(income_raw)
-# income[,c(1,4,9,10,11)] <-  lapply(income[,c(1,4,9,10,11)], as.numeric)
+
+# drop empty factor levels
+income[,c(2,3,5:8,12,13)] <-  lapply(income[,c(2,3,5:8,12,13)], factor) # drop empty factor levels
+
+# relevel education based on education_num
+unique(income[,c(3,4)]) # check relationship between 'education' and 'education_num'. They are exactly the same, matched on a 1-to-1 basis. 'education' is an ordinal categorical variable.
+income$education <- factor(income$education, levels(income$education)[c(14,4:7,1:3,12,16,9,8,10,13,15,11)])
+levels(income$education)
+income$education_num <- NULL
+
 saveRDS(income, "income0.rds") # backup
 ```
 
@@ -36,148 +44,149 @@ str(income)
 library(ggplot2)
 library(RColorBrewer)
 
-ds1 <- ggplot(income, aes(x=age)) + 
-    geom_density(aes(fill=factor(income)),alpha=0.5) +
-    labs(title="Density of Income by Age", 
-       y="Density of Income", 
-       x="Age (Years)") + 
-    scale_fill_manual(name = "income",
+# income vs age
+vl_age <- ggplot(income, aes(x=income, y=age)) + geom_violin(aes(fill=factor(income)), alpha=0.5, scale="count") + 
+  geom_boxplot(width = .1, fill = "black", outlier.colour = NA) +
+  stat_summary(fun.y = median, geom = "point", fill = "white", shape = 21, size = 2.5) +
+  labs(title="Income by Age", y="Age (Years)", x="Income") + 
+    scale_fill_manual(name = "Income",
                       values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
                       labels = c("Income <= 50K", "Income > 50K"))
-plot(ds1)
+plot(vl_age)
+  
+# income vs education
+bar_edu <- ggplot() + geom_bar(data=income, aes(x=education,fill=factor(income))) + 
+   labs(title="Distribution of Income Level among Different Education Levels", 
+        y="Count by Different Income Level", x="Education Levels")+
+scale_fill_manual(name = "Income",values = c(brewer.pal(7, "Reds")[4],
+      brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(bar_edu)
 
 
-unique(income[,c(3,4)]) # check relationship between 'education' and 'education_num'. They are exactly the same, matched on a 1-to-1 basis.
-#ds2 <- ggplot(income, aes(x=education_num)) + 
+# income vs capital_gain
+bi_cg <- ggplot(income, aes(x=capital_gain, y=as.numeric(factor(income))-1)) + 
+  stat_bin2d(bins=50) +
+  scale_fill_gradient(low = "lightblue", high = "red") +
+  stat_smooth(method = glm, method.args = list(family = binomial)) +
+  labs(title="Income by Capital Gain", x="Capital Gain", y="Income > 50K")
+plot(bi_cg)
+
+#vl2 <- ggplot(income, aes(x=income, y=capital_gain)) + geom_violin(aes(fill=factor(income)), alpha=0.5) + 
+#  geom_boxplot(width = .1, fill = "black", outlier.colour = NA) +
+#  stat_summary(fun.y = median, geom = "point", fill = "white", shape = 21, size = 2.5) +
+#  labs(title="Income by Capital Gain", 
+#       y="Capital Gain", x="Income") + 
+#    scale_fill_manual(name = "Income",
+#                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+#                      labels = c("Income <= 50K", "Income > 50K"))
+#plot(vl2)
+
+#ds3 <- ggplot(income, aes(x=capital_gain)) + 
+#  geom_density(aes(fill=factor(income)),alpha=0.5) + 
+#  labs(title="Density of Income by Capital Gain", 
+#       y="Density of Income", x="Capital Gain") + 
+#  scale_fill_manual(name = "income", values = c(brewer.pal(7, "Reds")[5], 
+#                                                brewer.pal(7, "Blues")[5]), 
+#                    labels = c("Income <= 50K", "Income > 50K"))
+#plot(ds3)
+
+# income vs capital_loss
+bi_cl <- ggplot(income, aes(x=capital_loss, y=as.numeric(factor(income))-1)) + 
+  stat_bin2d(bins=50) +
+  scale_fill_gradient(low = "lightblue", high = "red") +
+  stat_smooth(method = glm, method.args = list(family = binomial)) +
+  labs(title="Income by Capital Loss", x="Capital Loss", y="Income > 50K")
+plot(bi_cl)
+
+#ds4 <- ggplot(income, aes(x=capital_loss)) + 
 #    geom_density(aes(fill=factor(income)),alpha=0.5) +
-#    labs(title="Density of Income by Edu_num", 
+#    labs(title="Density of Income by Capital Loss", 
 #       y="Density of Income", 
-#       x="Education (Years)") + 
+#       x="Capital Loss") + 
 #    scale_fill_manual(name = "income",
 #                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
 #                      labels = c("Income <= 50K", "Income > 50K"))
-#plot(ds2)
-
-bar2 <- ggplot() + geom_bar(data=income, aes(x=education,fill=factor(income)))+
-   labs(title="Distribution of Income among Different Education Levels", 
-        y="Count by Different Income", x="Education Levels")+
-scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
-      brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
-  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
-
-plot(bar2)
-
-ds3 <- ggplot(income, aes(x=capital_gain)) + 
-  geom_density(aes(fill=factor(income)),alpha=0.5) + 
-  labs(title="Density of Income by Capital Gain", 
-       y="Density of Income", x="Capital Gain") + 
-  scale_fill_manual(name = "income", values = c(brewer.pal(7, "Reds")[5], 
-                                                brewer.pal(7, "Blues")[5]), 
-                    labels = c("Income <= 50K", "Income > 50K"))
-plot(ds3)
-
-ds4 <- ggplot(income, aes(x=capital_loss)) + 
-    geom_density(aes(fill=factor(income)),alpha=0.5) +
-    labs(title="Density of Income by Capital Loss", 
-       y="Density of Income", 
-       x="Capital Loss") + 
-    scale_fill_manual(name = "income",
-                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
-                      labels = c("Income <= 50K", "Income > 50K"))
-plot(ds4)
+#plot(ds4)
 
 # try net capital gain (loss)
-income$capital_net <- income$capital_gain - income$capital_loss
-ds4.1 <- ggplot(income, aes(x=capital_net)) + 
-    geom_density(aes(fill=factor(income)),alpha=0.5) +
-    labs(title="Density of Income by Net Capital Gain (Loss)", 
-       y="Density of Income", 
-       x="Net Capital Gain (Loss)") + 
-    scale_fill_manual(name = "income",
-                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
-                      labels = c("Income <= 50K", "Income > 50K"))
-plot(ds4.1)
+#income$capital_net <- income$capital_gain - income$capital_loss
+#ds4.1 <- ggplot(income, aes(x=capital_net)) + 
+#    geom_density(aes(fill=factor(income)),alpha=0.5) +
+#    labs(title="Density of Income by Net Capital Gain (Loss)", 
+#       y="Density of Income", 
+#       x="Net Capital Gain (Loss)") + 
+#    scale_fill_manual(name = "income",
+#                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+#                      labels = c("Income <= 50K", "Income > 50K"))
+#plot(ds4.1)
 
 # try absolute capital gain (loss) effect
-income$capital_logabseff <- log(income$capital_gain + income$capital_loss + 1)
-ds4.2 <- ggplot(income, aes(x=capital_logabseff)) + 
-    geom_density(aes(fill=factor(income)),alpha=0.5) +
-    labs(title="Density of Income by Log Absolute Capital Gain &  Loss Effect", 
-       y="Density of Income", 
-       x="Log Absolute Capital Gain & Loss Effect") + 
-    scale_fill_manual(name = "income",
-                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
-                      labels = c("Income <= 50K", "Income > 50K"))
-plot(ds4.2)
+#income$capital_logabseff <- log(income$capital_gain + income$capital_loss + 1)
+#ds4.2 <- ggplot(income, aes(x=capital_logabseff)) + 
+#    geom_density(aes(fill=factor(income)),alpha=0.5) +
+#    labs(title="Density of Income by Log Absolute Capital Gain &  Loss Effect", 
+#       y="Density of Income", 
+#       x="Log Absolute Capital Gain & Loss Effect") + 
+#    scale_fill_manual(name = "income",
+#                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+#                      labels = c("Income <= 50K", "Income > 50K"))
+#plot(ds4.2)
 
+# income vs hr_per_week
+hist_hr <- ggplot() + geom_histogram(data=income, aes(x=hr_per_week,fill=factor(income)), binwidth = 5) + 
+   labs(title="Distribution of Income Level among Different Working Hours per Week", 
+        y="Count by Different Income Levels", x="Working Hours per Week")+
+scale_fill_manual(name = "Income",values = c(brewer.pal(7, "Reds")[4],
+      brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
+  theme(axis.text.x = element_text(hjust = 1,size=8))
+plot(hist_hr)
 
-ds5 <- ggplot(income, aes(x=hr_per_week)) + 
-    geom_density(aes(fill=factor(income)),alpha=0.5) +
-    labs(title="Density of Income by Working Hours", 
-       y="Density of Income", 
-       x="Working Hours") + 
-    scale_fill_manual(name = "income",
-                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
-                      labels = c("Income <= 50K", "Income > 50K"))
-plot(ds5)
-
-
-bar1 <- ggplot() + geom_bar(data=income, aes(x=type_employer,fill=factor(income)))+
-   labs(title="Distribution of Income among Different Types of Employers", 
-        y="Count by Different Income", x="Types of Employers")+
-scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
+# income vs type_employer
+bar_emp <- ggplot() + geom_bar(data=income, aes(x=type_employer,fill=factor(income)))+
+   labs(title="Distribution of Income Level among Different Types of Employers", 
+        y="Count by Different Income Level", x="Types of Employers")+
+scale_fill_manual(name = "Income",values = c(brewer.pal(7, "Reds")[4],
 brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
   theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(bar_emp)
 
-
-plot(bar1)
-
-
-
-bar3 <- ggplot() + geom_bar(data=income, aes(x=marital,fill=factor(income)))+
-   labs(title="Distribution of Income among Different Marital Statuses", 
+# income vs marital
+bar_mrt <- ggplot() + geom_bar(data=income, aes(x=marital,fill=factor(income)))+
+   labs(title="Distribution of Income Level among Different Marital Statuses", 
         y="Count by Different Income", x="Marital Statuses")+
-scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
+scale_fill_manual(name = "Income",values = c(brewer.pal(7, "Reds")[4],
      brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
   theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(bar_mrt)
 
+# income vs occupation
+bar_ocp <- ggplot() + geom_bar(data=income, aes(x=occupation,fill=factor(income)))+
+   labs(title="Distribution of Income Level among Different Types of Occupations",
+        y="Count by Different Income Level", x="Types of Occupations")+
+scale_fill_manual(name = "Income",values = c(brewer.pal(7, "Reds")[4],
+      brewer.pal(7, "Blues")[5]), labels = c("Income <= 50K", "Income > 50K"))+
+  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(bar_ocp)
 
-plot(bar3)
-
-bar4 <- ggplot() + geom_bar(data=income, aes(x=occupation,fill=factor(income)))+
-   labs(title="Distribution of Income among Different Types of Occupations",
-        y="Count by Different Income", x="Types of Occupations")+
+# income vs race
+bar_rc <- ggplot() + geom_bar(data=income, aes(x=race,fill=factor(income)))+
+   labs(title="Distribution of Income Level among Different Races", 
+        y="Count by Different Income Levels", x="Races")+
 scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
       brewer.pal(7, "Blues")[5]), labels = c("Income <= 50K", "Income > 50K"))+
   theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(bar_rc)
 
-
-
-plot(bar4)
-
-bar5 <- ggplot() + geom_bar(data=income, aes(x=race,fill=factor(income)))+
-   labs(title="Distribution of Income among Different Races", 
-        y="Count by Different Income", x="Races")+
-scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
-      brewer.pal(7, "Blues")[5]), labels = c("Income <= 50K", "Income > 50K"))+
-  theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
-
-
-
-plot(bar5)
-
-bar6 <- ggplot() + geom_bar(data=income, aes(x=sex,fill=factor(income)))+
-   labs(title="Distribution of Income among Genders", 
-        y="Count by Different Income", x="Gender")+
+# income vs gender
+bar_gd <- ggplot() + geom_bar(data=income, aes(x=sex,fill=factor(income)))+
+   labs(title="Distribution of Income Level among Genders", 
+        y="Count by Different Income Levels", x="Gender")+
 scale_fill_manual(name = "income",values = c(brewer.pal(7, "Reds")[4],
        brewer.pal(7, "Blues")[5]), labels = c("Income <= 50K", "Income > 50K"))
+plot(bar_gd)
 
 
-
-plot(bar6)
-```
-
-```{r}
 # geographical plot of percentage of income > 50K
 
 binom_income <- function(x) {x==">50K"}
@@ -213,8 +222,6 @@ ggplot(income_map, aes(x = long, y = lat, group = group, fill = countryIncomePct
 
 
 ```{r}
-income_rec <- subset(income0,select=-education_num)
-
 ## Recategorize the country:
 region_table <- data.frame(country=c("Cambodia","Canada","China","Columbia","Cuba",
                   "Dominican-Republic","Ecuador","El-Salvador","England","France","Germany",
@@ -223,23 +230,19 @@ region_table <- data.frame(country=c("Cambodia","Canada","China","Columbia","Cub
                   "Nicaragua","Outlying-US(Guam-USVI-etc)","Peru","Philippines","Poland",
                   "Portugal","Puerto-Rico","Scotland","South","Taiwan","Thailand",
                   "Trinadad&Tobago","United-States","Vietnam","Yugoslavia"),
-                  region=c("Asia","NorthAmericas","Asia","Latin America","Latin America",
+                  region=c("Asia","North America","Asia","Latin America","Latin America",
                     "Latin America","Latin America","Latin America","Europe","Europe","Europe",
                     "Europe","Latin America","Latin America","Europe","Latin America","Asia",
                     "Europe","Asia","Asia","Europe","Europe","Latin America","Asia","Asia",
-                    "Latin America","Latin America","NorthAmericas","Latin America","Asia",
+                    "Latin America","Latin America","North America","Latin America","Asia",
                     "Europe","Europe","Latin America","Europe","Asia","Asia","Asia",
-                    "Latin America","NorthAmericas","Asia","Europe"))
-income_rec <- merge(income_rec, region_table, by.x="country", by.y="country", all.x=TRUE)
-income_rec <- subset(income_rec,select=-country)
-# summary(income_rec$region)
-# 
-# table(income_rec$region,income_rec$income)
-
-
-
+                    "Latin America","North America","Asia","Europe"))
+income <- merge(income, region_table, by.x="country", by.y="country", all.x=TRUE)
+income$country <- NULL
+# summary(income$region)
+# table(income$region,income$income)
 ```
-## Data Partition
+
 
 # Step 3: Fit the Full Model
 
@@ -248,17 +251,19 @@ income_rec <- subset(income_rec,select=-country)
 ## there are 30,162 observatoins. Ramdomly partition ~80% and ~20% of the data into training and testing set
 library(caTools)
 set.seed(1111)
-spl <- sample.split(income_rec$income, SplitRatio= 0.8)
-training_set <- subset(income_rec, spl==TRUE)
-testing_set <- subset(income_rec, spl==FALSE)
+spl <- sample.split(income$income, SplitRatio= 0.8)
+training_set <- subset(income, spl==TRUE)
+testing_set <- subset(income, spl==FALSE)
 fit.full <- glm(income~., family=binomial, data=training_set)  ## notice there is perfect separation
 summary(fit.full)
 ```
 
 
-# Step 4&5 : Detect Perfect Separation and Recategorize again
+# Step 4 & 5 : Detect Perfect Separation and Recategorize again
+
 
 ```{r}
+income_rec <- income
 
 ## without pay in type_employer !!
 table(income$type_employer,income$income)
@@ -301,13 +306,13 @@ Capital_gain still cause convergence problem
 
 ```{r}
 ## replace capital_gain and capital_loss with log absolute capital gain (loss) effect
- income_rec$capital_net <- income$capital_net
+ income_rec$capital_net <- income_rec$capital_gain - income_rec$capital_loss
  income_rec$capital_gain <- NULL
  income_rec$capital_loss <- NULL
 ```
 
 ```{r}
-set.seed(111)
+set.seed(1111)
 spl <- sample.split(income_rec$income, SplitRatio= 0.8)
 training_set <- subset(income_rec, spl==TRUE)
 testing_set <- subset(income_rec, spl==FALSE)
@@ -315,7 +320,7 @@ fit.full <- glm(income~., family=binomial, data=training_set)
 summary(fit.full)
 ```
 
-Step7: Stepwise Selection
+Step 7: Stepwise Selection
 
 ```{r}
 fit.step <- step(fit.full)
