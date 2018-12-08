@@ -190,10 +190,10 @@ plot(bar_gd)
 # geographical plot of percentage of income > 50K
 
 binom_income <- function(x) {x==">50K"}
-income$income_large <- binom_income(income$income)
+income0$income_large <- binom_income(income0$income)
 library(dplyr)
-income_by_country <- tapply(income$income_large, income$country, sum)
-count_by_country <- summary(income$country)
+income_by_country <- tapply(income0$income_large, income0$country, sum)
+count_by_country <- summary(income0$country)
 countryName <- names(count_by_country)
 rindex <- c(4,6,8,9,15,17,33,35,38,39,41)
 rrep <- c("Colombia", "Dominican Republic", "El Salvador", "UK", 
