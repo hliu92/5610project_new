@@ -351,7 +351,7 @@ fit <- fit.step
 
 
 ```{r}
-## Recategorize the country:
+## Recategorize Marital status:
 marry_table <- data.frame(marital=c("Divorced","Married-AF-spouse","Married-civ-spouse",
                                     "Married-spouse-absent","Never-married","Separated",
                                     "Widowed"),marital_new=c("Alone","Married",
@@ -366,7 +366,7 @@ set.seed(1111)
 spl <- sample.split(income_rec$income, SplitRatio= 0.8)
 training_set <- subset(income_rec, spl==TRUE)
 testing_set <- subset(income_rec, spl==FALSE)
-fit.full <- glm(income~.-capital_net, family=binomial, data=training_set) 
+fit.full <- glm(income~.-capital_gain, family=binomial, data=training_set) 
 summary(fit.full)
 ```
 Now all predictors are significant. AUC 87.75%. Check the interaction.
