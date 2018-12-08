@@ -145,7 +145,7 @@ plot(hist_hr)
 # income vs type_employer
 bar_emp <- ggplot() + geom_bar(data=income, aes(x=type_employer,fill=factor(income)))+
    labs(title="Distribution of Income Level among Different Types of Employers", 
-        y="Count by Different Income Level", x="Types of Employers")+
+        y="Count by Different Income Levels", x="Types of Employers")+
 scale_fill_manual(name = "Income",values = c(brewer.pal(7, "Reds")[4],
 brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
   theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
@@ -154,7 +154,7 @@ plot(bar_emp)
 # income vs marital
 bar_mrt <- ggplot() + geom_bar(data=income, aes(x=marital,fill=factor(income)))+
    labs(title="Distribution of Income Level among Different Marital Statuses", 
-        y="Count by Different Income", x="Marital Statuses")+
+        y="Count by Different Income Levels", x="Marital Statuses")+
 scale_fill_manual(name = "Income",values = c(brewer.pal(7, "Reds")[4],
      brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
   theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
@@ -163,7 +163,7 @@ plot(bar_mrt)
 # income vs occupation
 bar_ocp <- ggplot() + geom_bar(data=income, aes(x=occupation,fill=factor(income)))+
    labs(title="Distribution of Income Level among Different Types of Occupations",
-        y="Count by Different Income Level", x="Types of Occupations")+
+        y="Count by Different Income Levels", x="Types of Occupations")+
 scale_fill_manual(name = "Income",values = c(brewer.pal(7, "Reds")[4],
       brewer.pal(7, "Blues")[5]), labels = c("Income <= 50K", "Income > 50K"))+
   theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
@@ -305,10 +305,23 @@ summary(fit.full)
 Capital_gain still cause convergence problem
 
 ```{r}
-## replace capital_gain and capital_loss with log absolute capital gain (loss) effect
- income_rec$capital_net <- income_rec$capital_gain - income_rec$capital_loss
- income_rec$capital_gain <- NULL
- income_rec$capital_loss <- NULL
+## convert capital_gain from discrete integer variables to categorical defined by intervals
+# divide into 5 categories: 0 as the first category, and all others by quartile
+library(gtools)
+cg_quartile <- quantcut(income$capital_gain[income$capital_gain>0])
+table(cg_quartile)
+income_rec$capital_gain_cat <- cut(income_rec$capital_gain, 
+                       breaks = c(-Inf, 114, 3.46e+03, 7.3e+03, 1.41e+04, Inf), 
+                       labels = c("zero", "non-zero quar 1", "non-zero quar 2", "non-zero quar 3", "non-zero quar 4"), 
+                       right = FALSE)
+bar_cg <- ggplot() + geom_bar(data=income_rec, aes(x=capital_gain_cat,fill=factor(income)))+
+     labs(title="Distribution of Income Level among Different Capital Gain Categories", 
+          y="Count by Different Income Levels", x="Capital Gain Categories")+
+     scale_fill_manual(name = "Income",
+                       values = c(brewer.pal(7, "Reds")[4],
+                                  brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
+     theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(bar_cg)
 ```
 
 ```{r}
@@ -316,11 +329,15 @@ set.seed(1111)
 spl <- sample.split(income_rec$income, SplitRatio= 0.8)
 training_set <- subset(income_rec, spl==TRUE)
 testing_set <- subset(income_rec, spl==FALSE)
-fit.full <- glm(income~., family=binomial, data=training_set) 
+# use categorical capital gain instead of int 
+fit.full <- glm(income~.-capital_gain, family=binomial, data=training_set)
 summary(fit.full)
 ```
 
-Step 7: Stepwise Selection
+Convergence problem disappears, and capital gain categories are significant
+
+
+# Step 7: Stepwise Selection
 
 ```{r}
 fit.step <- step(fit.full)
@@ -329,9 +346,8 @@ summary(fit.step)
 fit <- fit.step
 ```
 
-## capital is useless now!!
 
-Step7.5 : Further Improvement & Interaction
+# Step7.5 : Further Improvement & Interaction
 
 
 ```{r}
@@ -346,7 +362,7 @@ income_rec <- subset(income_rec,select=-marital)
 
 
 ```{r}
-set.seed(111)
+set.seed(1111)
 spl <- sample.split(income_rec$income, SplitRatio= 0.8)
 training_set <- subset(income_rec, spl==TRUE)
 testing_set <- subset(income_rec, spl==FALSE)
