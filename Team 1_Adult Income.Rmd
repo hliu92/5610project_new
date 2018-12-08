@@ -250,16 +250,16 @@ income$country <- NULL
 ```{r}
 ## there are 30,162 observatoins. Ramdomly partition ~80% and ~20% of the data into training and testing set
 library(caTools)
-set.seed(1111)
+set.seed(8888)
 spl <- sample.split(income$income, SplitRatio= 0.8)
 training_set <- subset(income, spl==TRUE)
 testing_set <- subset(income, spl==FALSE)
-fit.full <- glm(income~., family=binomial, data=training_set)  ## notice there is perfect separation
+fit.full <- glm(income~., family=binomial, data=training_set)  
 summary(fit.full)
 ```
+Notice there is perfect separation!! - We cannot use this model.
 
-
-# Step 4 & 5 : Detect Perfect Separation and Recategorize again
+# Step 4: Detect Perfect Separation and Recategorize again
 
 
 ```{r}
@@ -291,10 +291,10 @@ income_rec$education<-as.factor(income_rec$education)
 
 ```
 
-# Step 6: Fit full model again
+Fit full model again
 
 ```{r}
-set.seed(1111)
+set.seed(8888)
 spl <- sample.split(income_rec$income, SplitRatio= 0.8)
 training_set <- subset(income_rec, spl==TRUE)
 testing_set <- subset(income_rec, spl==FALSE)
@@ -302,18 +302,19 @@ fit.full <- glm(income~., family=binomial, data=training_set)
 summary(fit.full)
 ```
 
-Capital_gain still cause convergence problem
+Capital_gain still cause convergence problem.
+AIC = 15960
 
 ```{r}
 ## convert capital_gain from discrete integer variables to categorical defined by intervals
-# divide into 5 categories: 0 as the first category, and all others by quartile
+# divide into 4 categories: 0 as the first category, and all others by 33rd and 67th quantile
 library(gtools)
-cg_quartile <- quantcut(income$capital_gain[income$capital_gain>0])
-table(cg_quartile)
+cg_quantile <- quantcut(income_rec$capital_gain[income_rec$capital_gain>0],3)
+table(cg_quantile)
 income_rec$capital_gain_cat <- cut(income_rec$capital_gain, 
-                       breaks = c(-Inf, 114, 3.46e+03, 7.3e+03, 1.41e+04, Inf), 
-                       labels = c("zero", "non-zero quar 1", "non-zero quar 2", "non-zero quar 3", "non-zero quar 4"), 
-                       right = FALSE)
+                                  breaks = c(-Inf, 114, 4.39e+03, 7.69e+03, Inf), 
+                                  labels = c("zero", "non-zero quan 1", "non-zero quan 2", "non-zero quan 3"), 
+                                  right = FALSE)
 bar_cg <- ggplot() + geom_bar(data=income_rec, aes(x=capital_gain_cat,fill=factor(income)))+
      labs(title="Distribution of Income Level among Different Capital Gain Categories", 
           y="Count by Different Income Levels", x="Capital Gain Categories")+
@@ -325,7 +326,7 @@ plot(bar_cg)
 ```
 
 ```{r}
-set.seed(1111)
+set.seed(8888)
 spl <- sample.split(income_rec$income, SplitRatio= 0.8)
 training_set <- subset(income_rec, spl==TRUE)
 testing_set <- subset(income_rec, spl==FALSE)
@@ -334,20 +335,20 @@ fit.full <- glm(income~.-capital_gain, family=binomial, data=training_set)
 summary(fit.full)
 ```
 
-Convergence problem disappears, and capital gain categories are significant
-
-
-# Step 7: Stepwise Selection
+Convergence problem disappears, and capital gain categories are significant.
+AIC decreased to 15751.
 
 ```{r}
 fit.step <- step(fit.full)
 summary(fit.step)
-# the stepwise result suggests all 8 predictors are useful. We use fit.full as the base model going forward.
-fit <- fit.step
 ```
 
+The stepwise result suggests all predictors are useful. We use fit.full as the base model going forward.
 
-# Step7.5 : Further Improvement & Interaction
+Further Improvement by recategorization
+
+
+# Step 7: Further Improvement & Interaction
 
 
 ```{r}
@@ -357,20 +358,74 @@ marry_table <- data.frame(marital=c("Divorced","Married-AF-spouse","Married-civ-
                                     "Widowed"),marital_new=c("Alone","Married",
                                      "Married","Alone","Alone","Alone","Alone"))
 income_rec <- merge(income_rec, marry_table, by.x="marital", by.y="marital", all.x=TRUE)
-income_rec <- subset(income_rec,select=-marital)
+income_rec$marital <- NULL
 ```
 
-
 ```{r}
-set.seed(1111)
+set.seed(8888)
 spl <- sample.split(income_rec$income, SplitRatio= 0.8)
 training_set <- subset(income_rec, spl==TRUE)
 testing_set <- subset(income_rec, spl==FALSE)
 fit.full <- glm(income~.-capital_gain, family=binomial, data=training_set) 
 summary(fit.full)
 ```
-Now all predictors are significant. AUC 87.75%. Check the interaction.
 
+Now all predictors are significant. 
+AIC further decreased to 15850.
+
+```{r}
+prob <- predict(fit.full, newdata=testing_set, type = 'response')
+table(testing_set$income, prob > 0.5)
+
+library(InformationValue)
+plotROC((testing_set$income==">50K"), prob)
+```
+
+Accuracy = 85.46%, AUC 90.71%. 
+
+```{r}
+# do same categorization (3 categories) for capital_loss
+cl_quantile <- quantcut(income_rec$capital_loss[income_rec$capital_loss>0],3)
+table(cl_quantile)
+income_rec$capital_loss_cat <- cut(income_rec$capital_loss, 
+                    breaks = c(-Inf, 155, 1.76e+03, 1.98e+03, Inf), 
+                    labels = c("zero", "non-zero quan 1", "non-zero quan 2", "non-zero quan 3"), 
+                    right = FALSE)
+bar_cl <- ggplot() + geom_bar(data=income_rec, aes(x=capital_loss_cat,fill=factor(income)))+
+     labs(title="Distribution of Income Level among Different Capital Loss Categories", 
+          y="Count by Different Income Levels", x="Capital Loss Categories")+
+     scale_fill_manual(name = "Income",
+                       values = c(brewer.pal(7, "Reds")[4],
+                                  brewer.pal(7, "Blues")[5]),labels = c("Income <= 50K", "Income > 50K"))+
+     theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
+plot(bar_cl)
+```
+
+```{r}
+set.seed(8888)
+spl <- sample.split(income_rec$income, SplitRatio= 0.8)
+training_set <- subset(income_rec, spl==TRUE)
+testing_set <- subset(income_rec, spl==FALSE)
+fit.full <- glm(income~.-capital_gain-capital_loss, family=binomial, data=training_set) 
+summary(fit.full)
+```
+
+Now all predictors are significant. 
+AIC further decreased to 15660.
+
+```{r}
+prob <- predict(fit.full, newdata=testing_set, type = 'response')
+table(testing_set$income, prob > 0.5)
+
+library(InformationValue)
+plotROC((testing_set$income==">50K"), prob)
+```
+
+Accuracy = 85.71%, AUC 90.89%. 
+
+This is our optimal full model with no interaction items.
+
+Check the interaction.
 
 ```{r}
 attach(income_rec)
