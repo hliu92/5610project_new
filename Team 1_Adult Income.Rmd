@@ -457,7 +457,9 @@ r4 <- ggplot() +
   stat_summary(fun.y = mean, geom = "line") + ggtitle('type_employer:marital')+
   theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
 plot(r4)
-
+#
+#
+#
 r5 <- ggplot() +
   aes(x = education, color = race, group = race, y = income_rec$income) +
   stat_summary(fun.y = mean, geom = "point") +
@@ -486,7 +488,9 @@ r8 <- ggplot() +
   stat_summary(fun.y = mean, geom = "line") + ggtitle('education:marital')+
   theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
 plot(r8)
-
+#
+#
+#
 r9 <- ggplot() +
   aes(x = occupation, color = race, group = race, y = income_rec$income) +
   stat_summary(fun.y = mean, geom = "point") +
@@ -515,7 +519,9 @@ r12 <- ggplot() +
   stat_summary(fun.y = mean, geom = "line") + ggtitle('occupation:marital')+
   theme(axis.text.x = element_text(angle = 20, hjust = 1,size=8))
 plot(r12)
-
+#
+#
+#
 r13 <- ggplot() +
   aes(x = race, color = marital_new, group =  marital_new, y = income_rec$income) +
   stat_summary(fun.y = mean, geom = "point") +
@@ -626,7 +632,7 @@ lrtest(fit.int3,fit.int2)
 # Deviance Goodness of Fit Test
 
 ```{r}
-1-pchisq(fit$deviance, fit$df.residual)
+1-pchisq(fit.int2$deviance, fit.int2$df.residual)
 # p-value~1, i.e. it is a good fit model 
 ```
 
@@ -640,7 +646,7 @@ library(InformationValue)
 plotROC((testing_set$income==">50K"), prob)
 
 #Double density plot
-p <- predict(fit, type='response')
+p <- predict(fit.int2, type='response')
 temp_train <- cbind(training_set, p)
 p <- prob
 temp_test <- cbind(testing_set, p)
