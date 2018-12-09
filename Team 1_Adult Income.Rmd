@@ -670,6 +670,68 @@ head(cbind(hl700$expected, hl700$observed),20)
 #cbind(hl10$expected, hl10$observed)
 ```
 
+#  McFadden's pseudo R2
+```{r}
+library(pscl)
+pR2(fit.int2)[4]
+```
+
+McFadden's pseudo R2 = 0.4294766
+Ref:https://www.rdocumentation.org/packages/pscl/versions/1.5.2/topics/pR2
+
+# Deviance Residual
+```{r}
+plot(residuals.glm(fit.int2,type="deviance"))
+plot(residuals.glm(fit.int2,type="deviance")[1:5000])
+```
+
+# Pearson Residual
+```{r}
+plot(residuals.glm(fit.int2,type="pearson"))
+plot(residuals.glm(fit.int2,type="pearson")[1:5000])
+```
+
+
+outlier exists, not too many.
+
+
+
+# Studentized residual
+
+```{r}
+plot(rstudent(fit.int2))
+plot(rstudent(fit.int2)[1:5000])
+
+```
+
+## exploration for segmentation
+
+```{r}
+income_trial <- income_rec
+income_trial$ID <- seq.int(nrow(income_trial))
+income_trial$label <- 1
+income_trial$label[3500:14000] <- 0
+viol <- ggplot(income_trial, aes(x=label, y=age)) + geom_violin(aes(fill=factor(label)), alpha=0.5, scale="count")
+plot(viol)
+bar_emp <- ggplot() + geom_bar(data=income_trial, aes(x=marital_new,fill=factor(label)))
+plot(bar_emp)
+```
+age  sex   income  marrital     highly imbalance 
+
+```{r}
+plot(income_trial$ID[income_rec$age >25 ],
+     residuals.glm(fit.int2,type="pearson")[income_rec$age >25],xlim=c(1,30000),ylim=c(-10,10),col=2)
+par(new=TRUE)
+plot(income_trial$ID[income_rec$age <26],
+     residuals.glm(fit.int2,type="pearson")[income_rec$age <26],xlim=c(1,30000), ylim=c(-10,10),col=4)
+par(new=FALSE)
+
+plot(income_trial$ID[income_rec$marital_new=="Married"],
+     residuals.glm(fit.int2,type="pearson")[income_rec$marital_new=="Married"],xlim=c(1,30000),ylim=c(-10,10),col=2)
+par(new=TRUE)
+plot(income_trial$ID[income_rec$marital_new=="Alone"],
+     residuals.glm(fit.int2,type="pearson")[income_rec$marital_new=="Alone"],xlim=c(1,30000), ylim=c(-10,10),col=4)
+```
 
 
 ```{r}
