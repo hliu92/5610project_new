@@ -266,14 +266,13 @@ Notice there is perfect separation!! - We cannot use this model.
 income_rec <- income
 
 ## without pay in type_employer !!
-table(income$type_employer,income$income)
-income_rec$type_employer[income_rec$type_employer=="Without-pay"] <- "Self-emp-not-inc"
+table(income_rec$type_employer,income_rec$income)
+library(car)
+income_rec$type_employer <- recode(income_rec$type_employer,
+                                   "c('Without-pay','Self-emp-not-inc')='Self-emp-not-inc/no-pay'")
 ## Preschool in education !!
-table(income$education,income$income)
-income_rec$education<-as.character(income_rec$education)
-income_rec$education[income_rec$education=="Preschool"] <- "Preschool-4th"
-income_rec$education[income_rec$education=="1st-4th"] <- "Preschool-4th"
-income_rec$education<-as.factor(income_rec$education)
+table(income_rec$education,income_rec$income)
+income_rec$education <- recode(income_rec$education, "c('Preschool','1st-4th')='Preschool-4th'")
 
 # ## Age !!
 # table(income_rec$age,income_rec$income)
@@ -355,7 +354,8 @@ Further Improvement by recategorization
 ## Recategorize Marital status:
 marry_table <- data.frame(marital=c("Divorced","Married-AF-spouse","Married-civ-spouse",
                                     "Married-spouse-absent","Never-married","Separated",
-                                    "Widowed"),marital_new=c("Alone","Married",
+                                    "Widowed"),
+                          marital_new=c("Alone","Married",
                                      "Married","Alone","Alone","Alone","Alone"))
 income_rec <- merge(income_rec, marry_table, by.x="marital", by.y="marital", all.x=TRUE)
 income_rec$marital <- NULL
@@ -417,11 +417,36 @@ AIC further decreased to 15660.
 prob <- predict(fit.full, newdata=testing_set, type = 'response')
 table(testing_set$income, prob > 0.5)
 
-library(InformationValue)
 plotROC((testing_set$income==">50K"), prob)
 ```
 
 Accuracy = 85.71%, AUC 90.89%. 
+
+```{r}
+## Recategorize education:
+income_rec$education <- recode(income_rec$education, "c('10th','11th','12th','5th-6th','7th-8th','9th','Preschool-4th')='Preschool-12th'")
+```
+
+```{r}
+set.seed(8888)
+spl <- sample.split(income_rec$income, SplitRatio= 0.8)
+training_set <- subset(income_rec, spl==TRUE)
+testing_set <- subset(income_rec, spl==FALSE)
+fit.full <- glm(income~.-capital_gain-capital_loss, family=binomial, data=training_set) 
+summary(fit.full)
+```
+
+AIC from 15660 to 15667.
+
+```{r}
+prob <- predict(fit.full, newdata=testing_set, type = 'response')
+table(testing_set$income, prob > 0.5)
+
+plotROC((testing_set$income==">50K"), prob)
+```
+
+Accuracy = 85.69%, AUC 90.92%. 
+Better accuracy and AUC.
 
 This is our optimal full model with no interaction items.
 
@@ -577,7 +602,7 @@ summary(fit.int1)  ## significant but not very good
 
 fit.int1 <- update(fit.full,.~.+type_employer:marital_new)
 lrtest(fit.int1,fit.full)
-summary(fit.int1)  ## significant, auc increase to 87.8% !!!!!!!
+summary(fit.int1)  ## significant
 
 fit.int1 <- update(fit.full,.~.+education:sex)
 lrtest(fit.int1,fit.full)  ## not significant
@@ -592,7 +617,7 @@ summary(fit.int1)  ## not significant
 
 fit.int1 <- update(fit.full,.~.+occupation:marital_new)
 lrtest(fit.int1,fit.full)
-summary(fit.int1)  ## significant, auc increase to 87.9% !!!!!!!
+summary(fit.int1)  ## significant
 
 fit.int1 <- update(fit.full,.~.+race:marital_new)
 lrtest(fit.int1,fit.full)
@@ -600,12 +625,11 @@ summary(fit.int1)  ## significant, not so good
 
 fit.int1 <- update(fit.full,.~.+region:marital_new)
 lrtest(fit.int1,fit.full)
-summary(fit.int1)  ## significant, auc increase to 87.7% !!!!!!!
+summary(fit.int1)  ## significant
 
 fit.int1 <- update(fit.full,.~.+region:sex)
 lrtest(fit.int1,fit.full)
 summary(fit.int1)  ## not significant
-
 
 fit.int1 <- update(fit.full,.~.+region:race)
 lrtest(fit.int1,fit.full)
@@ -616,41 +640,77 @@ add two interaction:
 ```{r}
 fit.int1 <- update(fit.full,.~.+occupation:marital_new)
 lrtest(fit.int1,fit.full)
+## auc 90.87%, accuracy 85.75%, aic decreased from 15667 to 15599 
+
 fit.int2 <- update(fit.full,.~.+occupation:marital_new+type_employer:marital_new)
 lrtest(fit.int2,fit.int1)
-## this one best, auc 87.91%
-
-
+## this one best, auc 90.89%, accuracy 85.71%, aic decreased from 15599 from 15573
 
 fit.int3 <- update(fit.full,.~.+occupation:marital_new+type_employer:marital_new+region:marital_new)
-lrtest(fit.int3,fit.int2)
-
-
+lrtest(fit.int3,fit.int2) # not significant
 ```
 
+**We choose fit.int2 as our final model after adding interaction items.**
 
 # Deviance Goodness of Fit Test
 
 ```{r}
 1-pchisq(fit.int2$deviance, fit.int2$df.residual)
 # p-value~1, i.e. it is a good fit model 
+
+#library(car)
+vif(fit.full)
 ```
 
-# Esimtated Probabilities 
+
 
 ```{r}
+# Esimtated Probabilities 
 prob <- predict(fit.int2, newdata=testing_set, type = 'response')
 table(testing_set$income, prob > 0.5)
 
-library(InformationValue)
-plotROC((testing_set$income==">50K"), prob)
+#odds ratio
+#OR_CI=exp(confint(fit.int2))
+#cbind(exp(coef(fit.int2)),OR_CI)
+readRDS("OR_CI.RDS")
+
+#library(InformationValue)
+#detach('package:caret')
+actualinc <- factor(as.numeric(testing_set$income==">50K"))
+plotROC(actualinc, prob)
+sensitivity(actualinc,prob)
+specificity(actualinc,prob)
+confusionMatrix(actualinc,prob)
+misClassError(actualinc,prob)
 
 #Double density plot
 p <- predict(fit.int2, type='response')
 temp_train <- cbind(training_set, p)
 p <- prob
 temp_test <- cbind(testing_set, p)
-ggplot(temp_train, aes(p, color = as.factor(income))) + 
+ggplot(temp_train, aes(p, color = income)) + 
   geom_density(size = 1) +
   ggtitle("Training Set's estimated probabilities") 
+
+#Confusion Matrix plot
+source("~/MSBA/ISOM5610/Lect5/unbalanced_function.R")
+
+temp_test$income <- as.numeric(temp_test$income)-1
+cm_info <- ConfusionMatrixInfo(data = temp_test, predict = "p", actual = "income", cutoff = 0.5 )
+cm_info$plot
+
+#Optimal cutoff by considering cost
+cost_fp <- 10
+cost_fn <- 10
+roc_info <- ROCInfo( data = cm_info$data, predict = "predict", 
+                     actual = "actual", cost.fp = cost_fp, cost.fn = cost_fn )
+grid.draw(roc_info$plot)
+
+
+#error measure based on new cutoff
+detach('package:caret')
+sensitivity(actualinc, prob, threshold = roc_info$cutoff)
+specificity(actualinc, prob, threshold = roc_info$cutoff)
+confusionMatrix(actualinc, prob, threshold = roc_info$cutoff)
+misClassError(actualinc, prob, threshold = roc_info$cutoff)
 ```
