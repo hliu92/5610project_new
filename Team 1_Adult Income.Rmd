@@ -660,6 +660,14 @@ lrtest(fit.int3,fit.int2) # not significant
 
 #library(car)
 vif(fit.full)
+
+# Hosmer-Lemeshow goodness of fit test
+library(ResourceSelection)
+hl700 <- hoslem.test(as.numeric(training_set$income==">50K"), fitted(fit.int2), g=700)
+hl700
+head(cbind(hl700$expected, hl700$observed),20)
+#hl10 <- hoslem.test(as.numeric(training_set$income==">50K"), fitted(fit.int2), g=10)
+#cbind(hl10$expected, hl10$observed)
 ```
 
 
