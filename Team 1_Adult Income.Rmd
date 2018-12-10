@@ -634,20 +634,64 @@ summary(fit.int1)  ## not significant
 fit.int1 <- update(fit.full,.~.+region:race)
 lrtest(fit.int1,fit.full)
 summary(fit.int1)  ## not significant
+
+fit.int1 <- update(fit.full,.~.+marital_new:age)
+lrtest(fit.int1,fit.full)
+summary(fit.int1)  
+
+fit.int1 <- update(fit.full,.~.+marital_new:hr_per_week)
+lrtest(fit.int1,fit.full)
+summary(fit.int1) 
+
+fit.int1 <- update(fit.full,.~.+age:hr_per_week)
+lrtest(fit.int1,fit.full)
+summary(fit.int1) 
+
+```
+
+```{r}
+# fit_step_int <- step(fit.full,scope=income~(.-capital_gain-capital_loss)^2,derection='forward')
+
 ```
 add two interaction:
 
 ```{r}
-fit.int1 <- update(fit.full,.~.+occupation:marital_new)
+fit.int1 <- update(fit.full,.~.+marital_new:capital_loss_cat)
 lrtest(fit.int1,fit.full)
-## auc 90.87%, accuracy 85.75%, aic decreased from 15667 to 15599 
+## auc 91.15%   AIC 15483
 
-fit.int2 <- update(fit.full,.~.+occupation:marital_new+type_employer:marital_new)
+fit.int2 <- update(fit.int1,.~.+sex:marital_new)
 lrtest(fit.int2,fit.int1)
-## this one best, auc 90.89%, accuracy 85.71%, aic decreased from 15599 from 15573
+## auc 91.3%   AIC 15361
 
-fit.int3 <- update(fit.full,.~.+occupation:marital_new+type_employer:marital_new+region:marital_new)
-lrtest(fit.int3,fit.int2) # not significant
+fit.int3 <- update(fit.int2,.~.+capital_gain_cat:marital_new)
+lrtest(fit.int3,fit.int2)
+## auc 91.43%   AIC 15311
+
+fit.int4 <- update(fit.int3,.~.+age:marital_new )
+lrtest(fit.int4,fit.int3) 
+## auc 91.42%   AIC 15265
+
+fit.int5 <- update(fit.int4,.~.+hr_per_week:marital_new)
+lrtest(fit.int5,fit.int4) 
+## auc 91.36%   AIC 15229
+
+fit.int6 <- update(fit.int5,.~.+occupation:marital_new  )
+lrtest(fit.int6,fit.int5) 
+## auc 91.36%   AIC 15204
+
+fit.int7 <- update(fit.int6,.~.+age:type_employer   )
+lrtest(fit.int7,fit.int6) 
+## auc 91.41%   AIC 15188
+summary(fit.int7)
+
+
+```
+```{r}
+prob <- predict(fit.int7, newdata=testing_set, type = 'response')
+table(testing_set$income, prob > 0.5)
+
+plotROC((testing_set$income==">50K"), prob)
 ```
 
 **We choose fit.int2 as our final model after adding interaction items.**
@@ -655,7 +699,7 @@ lrtest(fit.int3,fit.int2) # not significant
 # Deviance Goodness of Fit Test
 
 ```{r}
-1-pchisq(fit.int2$deviance, fit.int2$df.residual)
+1-pchisq(fit.int4$deviance, fit.int4$df.residual)
 # p-value~1, i.e. it is a good fit model 
 
 #library(car)
@@ -663,7 +707,7 @@ vif(fit.full)
 
 # Hosmer-Lemeshow goodness of fit test
 library(ResourceSelection)
-hl700 <- hoslem.test(as.numeric(training_set$income==">50K"), fitted(fit.int2), g=700)
+hl700 <- hoslem.test(as.numeric(training_set$income==">50K"), fitted(fit.int4), g=700)
 hl700
 head(cbind(hl700$expected, hl700$observed),20)
 #hl10 <- hoslem.test(as.numeric(training_set$income==">50K"), fitted(fit.int2), g=10)
@@ -681,14 +725,14 @@ Ref:https://www.rdocumentation.org/packages/pscl/versions/1.5.2/topics/pR2
 
 # Deviance Residual
 ```{r}
-plot(residuals.glm(fit.int2,type="deviance"))
-plot(residuals.glm(fit.int2,type="deviance")[1:5000])
+plot(residuals.glm(fit_step_int,type="deviance"))
+plot(residuals.glm(fit.int4,type="deviance")[1:5000])
 ```
 
 # Pearson Residual
 ```{r}
-plot(residuals.glm(fit.int2,type="pearson"))
-plot(residuals.glm(fit.int2,type="pearson")[1:5000])
+plot(residuals.glm(fit.int4,type="pearson"))
+plot(residuals.glm(fit.int4,type="pearson")[1:5000])
 ```
 
 
@@ -699,8 +743,8 @@ outlier exists, not too many.
 # Studentized residual
 
 ```{r}
-plot(rstudent(fit.int2))
-plot(rstudent(fit.int2)[1:5000])
+plot(rstudent(fit.int4))
+plot(rstudent(fit.int4)[1:5000])
 
 ```
 
