@@ -751,7 +751,7 @@ plot(rstudent(fit.int4)[1:5000])
 ## exploration for segmentation
 
 ```{r}
-income_trial <- income_rec
+income_trial <- training_set
 income_trial$ID <- seq.int(nrow(income_trial))
 income_trial$label <- 1
 income_trial$label[3500:14000] <- 0
@@ -763,18 +763,18 @@ plot(bar_emp)
 age  sex   income  marrital     highly imbalance 
 
 ```{r}
-plot(income_trial$ID[income_rec$age >25 ],
-     residuals.glm(fit.int2,type="pearson")[income_rec$age >25],xlim=c(1,30000),ylim=c(-10,10),col=2)
+plot(income_trial$ID[income_trial$age >25 ],
+     residuals.glm(fit.int2,type="pearson")[income_trial$age >25],xlim=c(1,30000),ylim=c(-10,10),col=2)
 par(new=TRUE)
-plot(income_trial$ID[income_rec$age <26],
-     residuals.glm(fit.int2,type="pearson")[income_rec$age <26],xlim=c(1,30000), ylim=c(-10,10),col=4)
+plot(income_trial$ID[income_trial$age <26],
+     residuals.glm(fit.int2,type="pearson")[income_trial$age <26],xlim=c(1,30000), ylim=c(-10,10),col=4)
 par(new=FALSE)
 
-plot(income_trial$ID[income_rec$marital_new=="Married"],
-     residuals.glm(fit.int2,type="pearson")[income_rec$marital_new=="Married"],xlim=c(1,30000),ylim=c(-10,10),col=2)
+plot(income_trial$ID[income_trial$marital_new=="Married"],
+     residuals.glm(fit.int2,type="pearson")[income_trial$marital_new=="Married"],xlim=c(1,30000),ylim=c(-10,10),col=2)
 par(new=TRUE)
-plot(income_trial$ID[income_rec$marital_new=="Alone"],
-     residuals.glm(fit.int2,type="pearson")[income_rec$marital_new=="Alone"],xlim=c(1,30000), ylim=c(-10,10),col=4)
+plot(income_trial$ID[income_trial$marital_new=="Alone"],
+     residuals.glm(fit.int2,type="pearson")[income_trial$marital_new=="Alone"],xlim=c(1,30000), ylim=c(-10,10),col=4)
 ```
 
 
