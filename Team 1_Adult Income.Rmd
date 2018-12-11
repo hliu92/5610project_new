@@ -653,53 +653,54 @@ summary(fit.int1)
 # fit_step_int <- step(fit.full,scope=income~(.-capital_gain-capital_loss)^2,derection='forward')
 
 ```
-add two interaction:
+
+Systematically add interaction items
 
 ```{r}
-fit.int1 <- update(fit.full,.~.+marital_new:capital_loss_cat)
+fit.int1 <- update(fit.full,.~.+sex:marital_new)
 lrtest(fit.int1,fit.full)
-## auc 91.15%   AIC 15483
+## lrtest significant(***)   accuracy=85.68%    auc 91.05%   AIC=15546
 
-fit.int2 <- update(fit.int1,.~.+sex:marital_new)
+fit.int2 <- update(fit.int1,.~.+age:marital_new)
 lrtest(fit.int2,fit.int1)
-## auc 91.3%   AIC 15361
+## lrtest significant(***)   accuracy=85.51%    auc 91.08%   AIC=15498
 
-fit.int3 <- update(fit.int2,.~.+capital_gain_cat:marital_new)
+fit.int3 <- update(fit.int2,.~.+hr_per_week:marital_new)
 lrtest(fit.int3,fit.int2)
-## auc 91.43%   AIC 15311
+## lrtest significant(***)   accuracy=85.58%    auc 91.01%   AIC=15459
 
-fit.int4 <- update(fit.int3,.~.+age:marital_new )
+fit.int4 <- update(fit.int3,.~.+type_employer:marital_new)
 lrtest(fit.int4,fit.int3) 
-## auc 91.42%   AIC 15265
+## lrtest significant(**)   accuracy=85.65%    auc 91.04%   AIC=15449
 
-fit.int5 <- update(fit.int4,.~.+hr_per_week:marital_new)
+fit.int5 <- update(fit.int4,.~.+age:capital_gain_cat)
 lrtest(fit.int5,fit.int4) 
-## auc 91.36%   AIC 15229
+## lrtest significant(***)   accuracy=85.60%    auc 91.03%   AIC=15436
 
-fit.int6 <- update(fit.int5,.~.+occupation:marital_new  )
+fit.int6 <- update(fit.int5,.~.+hr_per_week:sex)
 lrtest(fit.int6,fit.int5) 
-## auc 91.36%   AIC 15204
+## lrtest INsignificant(.)
 
-fit.int7 <- update(fit.int6,.~.+age:type_employer   )
-lrtest(fit.int7,fit.int6) 
-## auc 91.41%   AIC 15188
+fit.int7 <- update(fit.int5,.~.+marital_new:occupation)
+lrtest(fit.int7,fit.int5) 
+## lrtest significant(***)   accuracy=85.71%    auc 91.03%   AIC=15412
+```
+
+```{r}
 summary(fit.int7)
 
-
-```
-```{r}
 prob <- predict(fit.int7, newdata=testing_set, type = 'response')
 table(testing_set$income, prob > 0.5)
 
 plotROC((testing_set$income==">50K"), prob)
 ```
 
-**We choose fit.int2 as our final model after adding interaction items.**
+**We choose fit.int7 as our final model after adding interaction items.**
 
 # Deviance Goodness of Fit Test
 
 ```{r}
-1-pchisq(fit.int4$deviance, fit.int4$df.residual)
+1-pchisq(fit.int7$deviance, fit.int7$df.residual)
 # p-value~1, i.e. it is a good fit model 
 
 #library(car)
@@ -707,17 +708,18 @@ vif(fit.full)
 
 # Hosmer-Lemeshow goodness of fit test
 library(ResourceSelection)
-hl700 <- hoslem.test(as.numeric(training_set$income==">50K"), fitted(fit.int4), g=700)
-hl700
-head(cbind(hl700$expected, hl700$observed),20)
-#hl10 <- hoslem.test(as.numeric(training_set$income==">50K"), fitted(fit.int2), g=10)
-#cbind(hl10$expected, hl10$observed)
+hl100 <- hoslem.test(as.numeric(training_set$income==">50K"), fitted(fit.int7), g=100)
+hl100
+
+hl10 <- hoslem.test(as.numeric(training_set$income==">50K"), fitted(fit.int7), g=10)
+hl10
+cbind(hl10$expected, hl10$observed)
 ```
 
 #  McFadden's pseudo R2
 ```{r}
 library(pscl)
-pR2(fit.int2)[4]
+pR2(fit.int7)[4]
 ```
 
 McFadden's pseudo R2 = 0.4294766
@@ -725,14 +727,14 @@ Ref:https://www.rdocumentation.org/packages/pscl/versions/1.5.2/topics/pR2
 
 # Deviance Residual
 ```{r}
-plot(residuals.glm(fit_step_int,type="deviance"))
-plot(residuals.glm(fit.int4,type="deviance")[1:5000])
+#plot(residuals.glm(fit_step_int,type="deviance"))
+plot(residuals.glm(fit.int7,type="deviance")[1:5000])
 ```
 
 # Pearson Residual
 ```{r}
-plot(residuals.glm(fit.int4,type="pearson"))
-plot(residuals.glm(fit.int4,type="pearson")[1:5000])
+plot(residuals.glm(fit.int7,type="pearson"))
+plot(residuals.glm(fit.int7,type="pearson")[1:5000])
 ```
 
 
@@ -743,8 +745,8 @@ outlier exists, not too many.
 # Studentized residual
 
 ```{r}
-plot(rstudent(fit.int4))
-plot(rstudent(fit.int4)[1:5000])
+plot(rstudent(fit.int7))
+plot(rstudent(fit.int7)[1:5000])
 
 ```
 
@@ -764,27 +766,27 @@ age  sex   income  marrital     highly imbalance
 
 ```{r}
 plot(income_trial$ID[income_trial$age >25 ],
-     residuals.glm(fit.int2,type="pearson")[income_trial$age >25],xlim=c(1,30000),ylim=c(-10,10),col=2)
+     residuals.glm(fit.int7,type="pearson")[income_trial$age >25],xlim=c(1,30000),ylim=c(-10,10),col=2)
 par(new=TRUE)
 plot(income_trial$ID[income_trial$age <26],
-     residuals.glm(fit.int2,type="pearson")[income_trial$age <26],xlim=c(1,30000), ylim=c(-10,10),col=4)
+     residuals.glm(fit.int7,type="pearson")[income_trial$age <26],xlim=c(1,30000), ylim=c(-10,10),col=4)
 par(new=FALSE)
 
 plot(income_trial$ID[income_trial$marital_new=="Married"],
-     residuals.glm(fit.int2,type="pearson")[income_trial$marital_new=="Married"],xlim=c(1,30000),ylim=c(-10,10),col=2)
+     residuals.glm(fit.int7,type="pearson")[income_trial$marital_new=="Married"],xlim=c(1,30000),ylim=c(-10,10),col=2)
 par(new=TRUE)
 plot(income_trial$ID[income_trial$marital_new=="Alone"],
-     residuals.glm(fit.int2,type="pearson")[income_trial$marital_new=="Alone"],xlim=c(1,30000), ylim=c(-10,10),col=4)
+     residuals.glm(fit.int7,type="pearson")[income_trial$marital_new=="Alone"],xlim=c(1,30000), ylim=c(-10,10),col=4)
 ```
 
 
 ```{r}
 # Esimtated Probabilities 
-prob <- predict(fit.int2, newdata=testing_set, type = 'response')
+prob <- predict(fit.int7, newdata=testing_set, type = 'response')
 table(testing_set$income, prob > 0.5)
 
 #odds ratio
-#OR_CI=exp(confint(fit.int2))
+#OR_CI=exp(confint(fit.int7))
 #cbind(exp(coef(fit.int2)),OR_CI)
 readRDS("OR_CI.RDS")
 
