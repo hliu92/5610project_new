@@ -45,13 +45,14 @@ library(ggplot2)
 library(RColorBrewer)
 
 # income vs age
-vl_age <- ggplot(income, aes(x=income, y=age)) + geom_violin(aes(fill=factor(income)), alpha=0.5, scale="count") + 
-  geom_boxplot(width = .1, fill = "black", outlier.colour = NA) +
+vl_age <- ggplot(income, aes(x=income, y=age)) + geom_violin(aes(fill=factor(income)), alpha=0.9, scale="count") + 
+  geom_boxplot(width = .1, alpha=0.7,fill = "black", outlier.colour = NA) +
   stat_summary(fun.y = median, geom = "point", fill = "white", shape = 21, size = 2.5) +
   labs(title="Income by Age", y="Age (Years)", x="Income") + 
     scale_fill_manual(name = "Income",
-                      values = c(brewer.pal(7, "Reds")[5], brewer.pal(7, "Blues")[5]),
+                      values = c(brewer.pal(7, "Reds")[4], brewer.pal(7, "Blues")[5]),
                       labels = c("Income <= 50K", "Income > 50K"))
+
 plot(vl_age)
   
 # income vs education
@@ -734,7 +735,7 @@ plot(residuals.glm(fit.int7,type="deviance")[1:5000])
 # Pearson Residual
 ```{r}
 plot(residuals.glm(fit.int7,type="pearson"))
-plot(residuals.glm(fit.int7,type="pearson")[1:5000])
+plot(residuals.glm(fit.int7,type="pearson")[20040:20050])
 ```
 
 
@@ -829,4 +830,20 @@ sensitivity(actualinc, prob, threshold = roc_info$cutoff)
 specificity(actualinc, prob, threshold = roc_info$cutoff)
 confusionMatrix(actualinc, prob, threshold = roc_info$cutoff)
 misClassError(actualinc, prob, threshold = roc_info$cutoff)
+```
+
+```{r}
+blr_plot_diag_difdev(fit.int7,point_color = brewer.pal(7, "Blues")[5],
+                       title = "DIFDEV",
+                       xaxis_title = "Case Number", yaxis_title = "DIFDEV")
+blr_plot_difdev_fitted(fit.int7,point_color = brewer.pal(7, "Blues")[5],
+                       title = "DIFDEV vs Fitted Values Plot",
+                       xaxis_title = "Fitted Values", yaxis_title = "DIFDEV")
+blr_plot_difdev_leverage(fit.int7,point_color = brewer.pal(7, "Blues")[5],
+                       title = "DIFDEV vs Fitted Leverage",
+                       xaxis_title = "Leverage", yaxis_title = "DIFDEV")
+
+## outlier
+training_set[20041, ]
+
 ```
