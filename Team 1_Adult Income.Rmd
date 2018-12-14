@@ -343,6 +343,13 @@ fit.step <- step(fit.full)
 summary(fit.step)
 ```
 
+```{r}
+prob <- predict(fit.full, newdata=testing_set, type = 'response')
+table(testing_set$income, prob > 0.5)
+
+plotROC((testing_set$income==">50K"), prob)
+```
+
 The stepwise result suggests all predictors are useful. We use fit.full as the base model going forward.
 
 Further Improvement by recategorization
@@ -694,8 +701,25 @@ prob <- predict(fit.int7, newdata=testing_set, type = 'response')
 table(testing_set$income, prob > 0.5)
 
 plotROC((testing_set$income==">50K"), prob)
-```
 
+
+```
+```{r}
+library(ROCR)
+
+prob.full <- predict(fit.full, newdata=testing_set, type = 'response')
+prob.int7 <- predict(fit.int7, newdata=testing_set, type = 'response')
+
+pred.full <- prediction( prob.full, (testing_set$income==">50K"))
+pred.int7 <- prediction( prob.int7, (testing_set$income==">50K"))
+
+
+perf.full <- performance( pred.full, "tpr", "fpr" )
+perf.int7 <- performance(pred.int7, "tpr", "fpr")
+plot( perf.full, colorize = TRUE)
+plot(perf.int7, add = TRUE, colorize = TRUE)
+
+```
 **We choose fit.int7 as our final model after adding interaction items.**
 
 # Deviance Goodness of Fit Test
@@ -728,7 +752,7 @@ Ref:https://www.rdocumentation.org/packages/pscl/versions/1.5.2/topics/pR2
 
 # Deviance Residual
 ```{r}
-#plot(residuals.glm(fit_step_int,type="deviance"))
+plot(residuals.glm(fit.int7,type="deviance"),ylab="Deviance Residual",ylim=c(-4.2,4.2))
 plot(residuals.glm(fit.int7,type="deviance")[1:5000])
 ```
 
@@ -774,10 +798,10 @@ plot(income_trial$ID[income_trial$age <26],
 par(new=FALSE)
 
 plot(income_trial$ID[income_trial$marital_new=="Married"],
-     residuals.glm(fit.int7,type="pearson")[income_trial$marital_new=="Married"],xlim=c(1,30000),ylim=c(-10,10),col=2)
+     residuals.glm(fit.int7,type="deviance")[income_trial$marital_new=="Married"],xlim=c(1,25000),ylim=c(-4.2,4.2),col=2,xlab="",ylab="")
 par(new=TRUE)
 plot(income_trial$ID[income_trial$marital_new=="Alone"],
-     residuals.glm(fit.int7,type="pearson")[income_trial$marital_new=="Alone"],xlim=c(1,30000), ylim=c(-10,10),col=4)
+     residuals.glm(fit.int7,type="deviance")[income_trial$marital_new=="Alone"],xlim=c(1,25000), ylim=c(-4.2,4.2),col=4,ylab="Deviance Residual",xlab="Index")
 ```
 
 
@@ -817,8 +841,8 @@ cm_info <- ConfusionMatrixInfo(data = temp_test, predict = "p", actual = "income
 cm_info$plot
 
 #Optimal cutoff by considering cost
-cost_fp <- 10
-cost_fn <- 10
+cost_fp <- 9.45 # suppose cost_fp:cost_fn = 9.45%
+cost_fn <- 100
 roc_info <- ROCInfo( data = cm_info$data, predict = "predict", 
                      actual = "actual", cost.fp = cost_fp, cost.fn = cost_fn )
 grid.draw(roc_info$plot)
@@ -833,6 +857,13 @@ misClassError(actualinc, prob, threshold = roc_info$cutoff)
 ```
 
 ```{r}
+library(blorr)
+dd<-blr_residual_diagnostics(fit.int7)[,3]
+dd$index <- seq.int(nrow(dd))
+dd_sel <- dd[dd$difdev>9.5,]
+outlier <- training_set[dd_sel$index, ]
+outlier$difdev<-dd_sel$difdev
+
 blr_plot_diag_difdev(fit.int7,point_color = brewer.pal(7, "Blues")[5],
                        title = "DIFDEV",
                        xaxis_title = "Case Number", yaxis_title = "DIFDEV")
